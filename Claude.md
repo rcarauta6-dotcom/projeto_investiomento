@@ -23,55 +23,55 @@ Este documento descreve a arquitetura baseada em microsserviços do sistema de i
 ```mermaid
 flowchart TD
     %% Entidades Externas
-    User([Usuário / Investidor])
+    User([Usuário e Investidor])
     Web(Frontend Web\nReact/Next.js + TailwindCSS)
-    LLM([LLM Externa\nGrok])
-    ExtAPI([APIs Financeiras\nB3, Yahoo, CVM, etc.])
-    IdP([Provedor de Identidade\nAuth0 / Keycloak])
+    LLM([LLM Externa Grok])
+    ExtAPI([APIs Financeiras\nB3, Yahoo, CVM])
+    IdP([Auth0 ou Keycloak])
 
     %% Infraestrutura Orquestrada
     subgraph K8s [Orquestrador: Kubernetes Cluster]
         
         Ingress[NGINX Ingress\nRecebe tráfego externo]
         
-        subgraph DockerPods [Containers Docker / K8s Pods]
-            Gateway[Spring Cloud Gateway\nRoteamento & Validação JWT]
-            SvcCore[Core & Portfolio Service\nJava / Spring Boot 3 GraalVM]
-            SvcIngestion[Data Ingestion Service\nGo / Golang]
-            SvcAI[AI & RAG Service\nPython + LangChain]
+        subgraph DockerPods [Containers Docker e K8s Pods]
+            Gateway[Spring Cloud Gateway\nRoteamento e Validação JWT]
+            SvcCore[Core e Portfolio Service\nJava e Spring Boot 3 GraalVM]
+            SvcIngestion[Data Ingestion Service\nGo Lang]
+            SvcAI[AI e RAG Service\nPython com LangChain]
         end
         
-        subgraph Data [Bancos de Dados, Cache & Mensageria]
+        subgraph Data [Bancos de Dados, Cache e Mensageria]
             DB_Rel[(PostgreSQL\nUsuários e Portfólios)]
-            DB_Vec[(Qdrant / pgvector\nEmbeddings RAG)]
+            DB_Vec[(Qdrant ou pgvector\nEmbeddings RAG)]
             Cache[(Redis\nCache Cotações em Tempo Real)]
-            Kafka{Apache Kafka\nEventos e Assincronismo}
+            Kafka{Apache Kafka\nEventos Assíncronos}
         end
     end
 
     %% Fluxo de Usuário e Segurança
     User <-->|HTTPS| Web
     Web -.->|Autenticação| IdP
-    Web <-->|REST + JWT Token| Ingress
+    Web <-->|REST e JWT Token| Ingress
     Ingress <--> Gateway
 
     %% Roteamento do Gateway
     Gateway <-->|Rotas de Negócio| SvcCore
     Gateway <-->|Rotas de Cotação| SvcIngestion
-    Gateway <-->|Chat / Recomendações| SvcAI
+    Gateway <-->|Chat e Recomendações| SvcAI
 
     %% Fluxo do Core (Spring Boot)
     SvcCore <--> DB_Rel
 
     %% Fluxo de Ingestão de Dados (Go)
     SvcIngestion <-->|Busca rápida| ExtAPI
-    SvcIngestion -->|Salva Cotações (S/ DB Relacional)| Cache
-    SvcIngestion -- "Envia PDFs, Notícias e Balanços" --> Kafka
+    SvcIngestion -->|Salva direto no Cache| Cache
+    SvcIngestion -- "Envia PDFs e Noticias" --> Kafka
 
     %% Fluxo de IA e RAG (Python)
-    Kafka -- "Consome textos p/ Vetorizar" --> SvcAI
-    SvcAI <-->|Grava/Busca Contexto| DB_Vec
-    SvcAI <-->|Prompt + Contexto RAG| LLM
+    Kafka -- "Consome para Vetorizar" --> SvcAI
+    SvcAI <-->|Grava e Busca Contexto| DB_Vec
+    SvcAI <-->|Prompt e Contexto RAG| LLM
     
     %% Comunicação Interna (A IA precisa de dados para responder)
     SvcAI -.->|Pega portfólio do usuário| SvcCore
