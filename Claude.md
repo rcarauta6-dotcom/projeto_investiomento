@@ -38,7 +38,7 @@ flowchart TD
             Gateway[Spring Cloud Gateway\nRoteamento e Validação JWT]
             SvcCore[Core e Portfolio Service\nJava e Spring Boot 3 GraalVM]
             SvcIngestion[Data Ingestion Service\nGo Lang]
-            SvcAI[AI e RAG Service\nPython com LangChain]
+            SvcAI[AI e RAG Service\nPython com FastAPI]
         end
         
         subgraph Data [Bancos de Dados, Cache e Mensageria]
@@ -52,13 +52,16 @@ flowchart TD
     %% Fluxo de Usuário e Segurança
     User <-->|HTTPS| Web
     Web -.->|Autenticação| IdP
-    Web <-->|REST e JWT Token| Ingress
+    Web <-->|REST e WSS WebSocket| Ingress
     Ingress <--> Gateway
 
-    %% Roteamento do Gateway
-    Gateway <-->|Rotas de Negócio| SvcCore
-    Gateway <-->|Rotas de Cotação| SvcIngestion
-    Gateway <-->|Chat e Recomendações| SvcAI
+    %% Roteamento do Gateway (REST Padrão)
+    Gateway <-->|REST: Rotas de Negócio| SvcCore
+    Gateway <-->|REST: Rotas de Cotação| SvcIngestion
+    Gateway <-->|REST: Chat e Recomendações| SvcAI
+
+    %% Roteamento WebSocket (Canal Persistente)
+    Gateway <==>|WSS: Alertas Proativos da IA| SvcAI
 
     %% Fluxo do Core (Spring Boot)
     SvcCore <--> DB_Rel
@@ -66,15 +69,15 @@ flowchart TD
     %% Fluxo de Ingestão de Dados (Go)
     SvcIngestion <-->|Busca rápida| ExtAPI
     SvcIngestion -->|Salva direto no Cache| Cache
-    SvcIngestion -- "Envia PDFs e Noticias" --> Kafka
+    SvcIngestion -- "Publica PDFs, Notícias e Eventos" --> Kafka
 
     %% Fluxo de IA e RAG (Python)
-    Kafka -- "Consome para Vetorizar" --> SvcAI
+    Kafka -- "IA escuta eventos do mercado" --> SvcAI
     SvcAI <-->|Grava e Busca Contexto| DB_Vec
     SvcAI <-->|Prompt e Contexto RAG| LLM
     
-    %% Comunicação Interna (A IA precisa de dados para responder)
-    SvcAI -.->|Pega portfólio do usuário| SvcCore
+    %% Comunicação Interna (A IA precisa de dados para responder e gerar alertas)
+    SvcAI -.->|Analisa portfólio do usuário| SvcCore
     SvcAI -.->|Pega cotação atual| Cache
 
     %% Estilização do Diagrama
