@@ -5,7 +5,7 @@ PROJECT_DIR="frontend"
 
 if [ -d "$PROJECT_DIR" ]; then
   echo "Erro: o diretório '$PROJECT_DIR' já existe. Escolha outro nome ou remova o diretório existente."
-  exit 1
+  exit 
 fi
 
 command -v npx >/dev/null 2>&1 || {
