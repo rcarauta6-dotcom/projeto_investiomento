@@ -1,0 +1,6 @@
+apiVersion: v2
+name: meu-kafka-chart
+description: Um chart Helm customizado do zero com Kafka UI
+type: application
+version: 1.0.0
+appVersion: "7.5.0"

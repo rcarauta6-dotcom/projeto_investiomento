@@ -1,0 +1,15 @@
+auth:
+  username: postgres
+  postgresPassword: postgres123
+  database: investimentos
+
+primary:
+  persistence:
+    enabled: false
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+
+metrics:
+  enabled: false

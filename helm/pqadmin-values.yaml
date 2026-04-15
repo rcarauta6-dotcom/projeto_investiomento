@@ -1,0 +1,22 @@
+auth:
+  username: pgadmin
+  password: pgadmin123
+
+service:
+  type: ClusterIP
+  port: 80
+
+postgresql:
+  enabled: false
+
+externalDatabase:
+  host: meu-release-postgresql
+  port: 5432
+  user: postgres
+  password: postgres123
+  database: investimentos
+
+resources:
+  requests:
+    memory: 128Mi
+    cpu: 100m

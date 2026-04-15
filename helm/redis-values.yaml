@@ -1,0 +1,18 @@
+usePassword: false
+
+cluster:
+  enabled: false
+
+master:
+  persistence:
+    enabled: false
+
+replica:
+  replicaCount: 0
+  persistence:
+    enabled: false
+
+resources:
+  requests:
+    memory: 128Mi
+    cpu: 100m
