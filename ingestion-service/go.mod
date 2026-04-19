@@ -1,3 +1,3 @@
-module example.com/ingestion-service
+module ingestion-service
 
-go 1.22
+go 1.26.2
