@@ -1,8 +1,9 @@
 export async function fetchPortfolioSummary() {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  const response = await fetch(`${baseUrl}/api/v1/portfolio/summary`, {
+  const response = await fetch(`${baseUrl}/gateway/v1/portfolio/summary`, {
     method: 'GET',
     headers: {
+      'X-Custom-Host': 'meu-app-autorizado',
       ...(process.env.NEXT_PUBLIC_API_AUTH_HEADER
         ? { Authorization: process.env.NEXT_PUBLIC_API_AUTH_HEADER } as Record<string, string>
         : {}),
@@ -22,9 +23,10 @@ export async function fetchPortfolioSummary() {
 
 export async function fetchPortfolioTransactions() {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  const response = await fetch(`${baseUrl}/api/v1/portfolio/transactions`, {
+  const response = await fetch(`${baseUrl}/gateway/v1/portfolio`, {
     method: 'GET',
     headers: {
+      'X-Custom-Host': 'meu-app-autorizado',
       ...(process.env.NEXT_PUBLIC_API_AUTH_HEADER
         ? { Authorization: process.env.NEXT_PUBLIC_API_AUTH_HEADER } as Record<string, string>
         : {}),
@@ -40,8 +42,8 @@ export async function fetchPortfolioTransactions() {
     ativo: string;
     tipo: string;
     quantidade: number;
-    preco_unitario: number;
-    data_operacao: string;
+    precoUnitario: number;
+    dataOperacao: string;
   }>;
 }
 
@@ -49,14 +51,15 @@ export async function createTransaction(transaction: {
   ativo: string;
   tipo: string;
   quantidade: number;
-  preco_unitario: number;
-  data_operacao?: string;
+  precoUnitario: number;
+  dataOperacao?: string;
 }) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  const response = await fetch(`${baseUrl}/api/v1/portfolio/transactions`, {
+  const response = await fetch(`${baseUrl}/gateway/v1/portfolio/transactions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'X-Custom-Host': 'meu-app-autorizado',
       ...(process.env.NEXT_PUBLIC_API_AUTH_HEADER
         ? { Authorization: process.env.NEXT_PUBLIC_API_AUTH_HEADER } as Record<string, string>
         : {}),
@@ -73,7 +76,7 @@ export async function createTransaction(transaction: {
     ativo: string;
     tipo: string;
     quantidade: number;
-    preco_unitario: number;
-    data_operacao: string;
+    precoUnitario: number;
+    dataOperacao: string;
   };
 }

@@ -17,6 +17,11 @@ public class HostFilter implements GlobalFilter, Ordered {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        // Permitir requisições OPTIONS (CORS preflight) sem validar o header
+        if (org.springframework.http.HttpMethod.OPTIONS.equals(exchange.getRequest().getMethod())) {
+            return chain.filter(exchange);
+        }
+
         // Buscamos o header customizado em vez do 'Host' nativo do protocolo
         String customHost = exchange.getRequest().getHeaders().getFirst(CUSTOM_HEADER);
 

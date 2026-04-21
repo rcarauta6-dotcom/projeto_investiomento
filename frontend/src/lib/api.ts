@@ -5,6 +5,7 @@ export async function apiGet<T>(path: string): Promise<T> {
   const response = await fetch(`${baseUrl}${path}`, {
     method: 'GET',
     headers: {
+      'X-Custom-Host': 'meu-app-autorizado',
       // The gateway expects the Authorization header; we assume a valid token is set via env or mock.
       // In testing environments the token can be omitted or set to a dummy value.
       ...(process.env.NEXT_PUBLIC_API_AUTH_HEADER

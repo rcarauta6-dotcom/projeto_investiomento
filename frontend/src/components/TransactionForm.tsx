@@ -4,108 +4,105 @@ import { useState } from 'react';
 import { createTransaction } from '@/services/portfolio';
 
 export default function TransactionForm() {
-  const [form, setForm] = useState({
-    ativo: '',
-    tipo: 'COMPRA',
-    quantidade: '',
-    preco_unitario: '',
-  });
+  const [ativo, setAtivo] = useState('');
+  const [tipo, setTipo] = useState('COMPRA');
+  const [quantidade, setQuantidade] = useState('');
+  const [preco, setPreco] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string>('');
-  const [success, setSuccess] = useState<string>('');
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setForm(prev => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
-    setSuccess('');
+    setMessage(null);
+
     try {
-      const transaction = {
-        ...form,
-        preco_unitario: Number(form.preco_unitario),
-        quantidade: Number(form.quantidade),
-        data_operacao: new Date().toISOString().split('T')[0],
-      };
-      await createTransaction(transaction);
-      setSuccess('Transação registrada com sucesso!');
-      setForm({
-        ativo: '',
-        tipo: 'COMPRA',
-        quantidade: '',
-        preco_unitario: '',
+      await createTransaction({
+        ativo: ativo.trim().toUpperCase(),
+        tipo,
+        quantidade: Number(quantidade),
+        precoUnitario: Number(preco),
+        dataOperacao: new Date().toISOString().split('T')[0],
       });
-    } catch (err: any) {
-      setError(err.message);
+      setMessage({ type: 'success', text: 'Transação registrada com sucesso!' });
+      setAtivo('');
+      setQuantidade('');
+      setPreco('');
+    } catch (error: any) {
+      setMessage({ type: 'error', text: 'Erro ao processar requisição.' });
+      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div>
-      <form onSubmit={handleSubmit}>
-        <input type="hidden" name="tipo" value="COMPRA" />
-        <label>
-          Ativo:
-          <input
-            type="text"
-            name="ativo"
-            value={form.ativo}
-            onChange={handleChange}
-            required
-          />
-        </label>
-        <br />
-        <label>
-          Tipo:
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-1.5">
+        <label htmlFor="ativo" className="text-sm font-semibold text-slate-700">Ativo</label>
+        <input
+          id="ativo"
+          type="text"
+          placeholder="Ex: PETR4"
+          value={ativo}
+          onChange={(e) => setAtivo(e.target.value)}
+          required
+          className="input-professional"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <label htmlFor="tipo" className="text-sm font-semibold text-slate-700">Operação</label>
           <select
-            name="tipo"
-            value={form.tipo}
-            onChange={handleChange}
-            required
+            id="tipo"
+            value={tipo}
+            onChange={(e) => setTipo(e.target.value)}
+            className="input-professional"
           >
             <option value="COMPRA">Compra</option>
             <option value="VENDA">Venda</option>
           </select>
-        </label>
-        <br />
-        <label>
-          Quantidade:
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="quantidade" className="text-sm font-semibold text-slate-700">Qtd.</label>
           <input
+            id="quantidade"
             type="number"
-            name="quantidade"
-            value={form.quantidade}
-            onChange={handleChange}
+            placeholder="0"
+            value={quantidade}
+            onChange={(e) => setQuantidade(e.target.value)}
             required
+            className="input-professional"
           />
-        </label>
-        <br />
-        <label>
-          Preço Unitário (R$):
-          <input
-            type="number"
-            step="0.01"
-            name="preco_unitario"
-            value={form.preco_unitario}
-            onChange={handleChange}
-            required
-          />
-        </label>
-        <br />
-        <button type="submit" disabled={loading}>
-          {loading ? 'Registrando...' : 'Registrar'}
-        </button>
-      </form>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      {success && <p style={{ color: 'green' }}>{success}</p>}
-    </div>
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <label htmlFor="preco" className="text-sm font-semibold text-slate-700">Preço Unitário</label>
+        <input
+          id="preco"
+          type="number"
+          step="0.01"
+          placeholder="R$ 0,00"
+          value={preco}
+          onChange={(e) => setPreco(e.target.value)}
+          required
+          className="input-professional"
+        />
+      </div>
+
+      <button type="submit" disabled={loading} className="btn-professional mt-2">
+        {loading ? 'Processando...' : 'Registrar Transação'}
+      </button>
+
+      {message && (
+        <div className={`p-4 rounded-lg text-sm font-medium transition-all ${
+          message.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'
+        }`}>
+          {message.text}
+        </div>
+      )}
+    </form>
   );
 }

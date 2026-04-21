@@ -7,12 +7,31 @@ spring:
 
   cloud:
     gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "http://localhost:3000"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
       httpclient:
         connect-timeout: 5000
         response-timeout: 10s
 
       routes:
-        - id: core-service
+        - id: core-service-external
+          uri: http://localhost:8081
+          predicates:
+            - Path=/gateway/v1/**
+          filters:
+            - RewritePath=/gateway/v1/(?<segment>.*), /api/v1/${segment}
+        
+        - id: core-service-internal
           uri: http://localhost:8081
           predicates:
             - Path=/api/core/**, /api/v1/**

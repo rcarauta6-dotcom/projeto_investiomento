@@ -1,8 +1,9 @@
 export async function getStockPrice(ticker: string) {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-  const response = await fetch(`${baseUrl}/api/v1/market/stocks/${encodeURIComponent(ticker)}`, {
+  const response = await fetch(`${baseUrl}/gateway/v1/market/stocks/${encodeURIComponent(ticker)}`, {
     method: 'GET',
     headers: {
+      'X-Custom-Host': 'meu-app-autorizado',
       // Authorization header expected by the gateway; provide a dummy token in dev if needed.
       ...(process.env.NEXT_PUBLIC_API_AUTH_HEADER
         ? { Authorization: process.env.NEXT_PUBLIC_API_AUTH_HEADER } as Record<string, string>
