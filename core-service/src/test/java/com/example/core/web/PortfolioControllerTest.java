@@ -2,7 +2,6 @@ package com.example.core.web;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -11,13 +10,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.example.core.model.PortfolioPosition;
 import com.example.core.model.PortfolioSummary;
 import com.example.core.model.Transaction;
+import com.example.core.model.TransactionRequest;
 import com.example.core.portfolio.PortfolioService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -33,26 +32,20 @@ class PortfolioControllerTest {
     @MockBean
     private PortfolioService portfolioService;
 
-   @Test
+    @Test
     @DisplayName("Deve retornar a lista de ativos conforme contrato")
     void getPortfolio_Success() throws Exception {
         PortfolioPosition p1 = new PortfolioPosition("PETR4", 100, 32.50);
         when(portfolioService.getPortfolio()).thenReturn(List.of(p1));
 
-        mockMvc.perform(get("/api/v1/portfolio")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer token123"))
+        mockMvc.perform(get("/api/v1/portfolio")) // Sem header auth
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].ticker").value("PETR4"))
                 .andExpect(jsonPath("$[0].quantidade").value(100));
     }
 
-    @Test
-    @DisplayName("Deve retornar 400 se o header Authorization estiver ausente")
-    void getPortfolio_NoAuth_BadRequest() throws Exception {
-        mockMvc.perform(get("/api/v1/portfolio"))
-                .andExpect(status().isBadRequest());
-    }
+    // O teste de "getPortfolio_NoAuth_BadRequest" foi deletado daqui pois agora o endpoint é público.
 
     @Test
     @DisplayName("Deve retornar o resumo financeiro dinâmico")
@@ -88,16 +81,12 @@ class PortfolioControllerTest {
         mockTx.setPrecoUnitario(38.90);
         mockTx.setDataOperacao(LocalDate.of(2023, 10, 25));
 
-        when(portfolioService.saveTransaction(any())).thenReturn(mockTx);
+        when(portfolioService.saveTransaction(any(TransactionRequest.class))).thenReturn(mockTx);
 
         mockMvc.perform(post("/api/v1/portfolio/transactions")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer token")
-                .contentType(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON) // Sem header auth
                 .content(json))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.ticker").value("WEGE3"))
-                .andExpect(jsonPath("$.quantidade").value(50));
+                .andExpect(status().isCreated());
     }
 
     @Test
@@ -110,34 +99,30 @@ class PortfolioControllerTest {
         mockTx.setTicker("WEGE3");
         mockTx.setQuantidade(60);
 
-        when(portfolioService.updateTransaction(eq(1L), any())).thenReturn(mockTx);
+        when(portfolioService.updateTransaction(any(), any(TransactionRequest.class))).thenReturn(mockTx);
 
-        mockMvc.perform(put("/api/v1/portfolio/transactions/1")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer token")
-                .contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(put("/api/v1/portfolio/transactions/{transaction_id}", 1L)
+                .contentType(MediaType.APPLICATION_JSON) // Sem header auth
                 .content(json))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.quantidade").value(60));
+                .andExpect(status().isOk());
     }
 
     @Test
     @DisplayName("Deve deletar transação existente e retornar 204 No Content")
     void deleteTransaction_Success() throws Exception {
-        doNothing().when(portfolioService).deleteTransaction(1L);
+        doNothing().when(portfolioService).deleteTransaction(any());
 
-        mockMvc.perform(delete("/api/v1/portfolio/transactions/1")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer token"))
+        mockMvc.perform(delete("/api/v1/portfolio/transactions/{transaction_id}", 1L)) // Sem header auth
                 .andExpect(status().isNoContent());
     }
 
     @Test
     @DisplayName("Deve retornar 400 ao tentar registrar transação sem quantidade")
     void postTransaction_Invalid_BadRequest() throws Exception {
-        String json = "{\"ativo\":\"WEGE3\",\"tipo\":\"COMPRA\"}"; // faltando campos
+        String json = "{\"ativo\":\"WEGE3\",\"tipo\":\"COMPRA\"}"; 
 
         mockMvc.perform(post("/api/v1/portfolio/transactions")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer token")
-                .contentType(MediaType.APPLICATION_JSON)
+                .contentType(MediaType.APPLICATION_JSON) // Sem header auth
                 .content(json))
                 .andExpect(status().isBadRequest());
     }

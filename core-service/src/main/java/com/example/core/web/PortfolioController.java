@@ -3,7 +3,6 @@ package com.example.core.web;
 import com.example.core.model.*;
 import com.example.core.portfolio.PortfolioService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,8 +22,7 @@ public class PortfolioController {
     }
 
     @GetMapping("/portfolio")
-    public ResponseEntity<List<PortfolioPosition>> getPortfolio(
-            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = true) String auth) {
+    public ResponseEntity<List<PortfolioPosition>> getPortfolio() {
         return ResponseEntity.ok(portfolioService.getPortfolio());
     }
 
