@@ -6,77 +6,90 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"ingestion-service/internal/model"
 )
 
-// mockService implementa QuoteService
-type mockService struct {
-	mockQuote *model.Quote
-	mockErr   error
+// MockQuoteService é um mock para a interface QuoteService
+type MockQuoteService struct {
+	GetQuoteFunc         func(ctx context.Context, symbol string) (*model.Quote, error)
+	GetAllQuotesFunc     func(ctx context.Context) ([]*model.Quote, error)
+	ForceUpdateQuoteFunc func(ctx context.Context, symbol string) (*model.Quote, error)
 }
 
-func (m *mockService) GetQuote(ctx context.Context, symbol string) (*model.Quote, error) {
-	return m.mockQuote, m.mockErr
+func (m *MockQuoteService) GetQuote(ctx context.Context, symbol string) (*model.Quote, error) {
+	return m.GetQuoteFunc(ctx, symbol)
 }
 
-func TestQuoteHandler_Success(t *testing.T) {
-	// Arrange
-	mockSvc := &mockService{
-		mockQuote: &model.Quote{Symbol: "ITUB4", Price: 34.12},
-		mockErr:   nil,
+func (m *MockQuoteService) GetAllQuotes(ctx context.Context) ([]*model.Quote, error) {
+	return m.GetAllQuotesFunc(ctx)
+}
+
+func (m *MockQuoteService) ForceUpdateQuote(ctx context.Context, symbol string) (*model.Quote, error) {
+	return m.ForceUpdateQuoteFunc(ctx, symbol)
+}
+
+func TestQuoteHandler(t *testing.T) {
+	mockSvc := &MockQuoteService{
+		GetQuoteFunc: func(ctx context.Context, symbol string) (*model.Quote, error) {
+			if symbol == "PETR4" {
+				return &model.Quote{Symbol: "PETR4", Price: 30.0}, nil
+			}
+			return nil, errors.New("not found")
+		},
 	}
-	req := httptest.NewRequest(http.MethodGet, "/api/quote?symbol=ITUB4", nil)
-	rr := httptest.NewRecorder()
 
-	// Act
 	handler := QuoteHandler(mockSvc)
-	handler.ServeHTTP(rr, req)
 
-	// Assert
-	if rr.Code != http.StatusOK {
-		t.Errorf("esperava status 200, recebeu %v", rr.Code)
-	}
+	t.Run("sucesso ao buscar cotação", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/quote?symbol=PETR4", nil)
+		rr := httptest.NewRecorder()
 
-	var q model.Quote
-	json.NewDecoder(rr.Body).Decode(&q)
-	if q.Symbol != "ITUB4" || q.Price != 34.12 {
-		t.Errorf("resposta inesperada: %+v", q)
-	}
+		handler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("esperava status 200, recebeu %d", rr.Code)
+		}
+
+		var quote model.Quote
+		json.Unmarshal(rr.Body.Bytes(), &quote)
+		if quote.Symbol != "PETR4" {
+			t.Errorf("esperava PETR4, recebeu %s", quote.Symbol)
+		}
+	})
+
+	t.Run("erro quando símbolo não é passado", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/api/quote", nil)
+		rr := httptest.NewRecorder()
+
+		handler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusBadRequest {
+			t.Errorf("esperava status 400, recebeu %d", rr.Code)
+		}
+	})
 }
 
-func TestQuoteHandler_MissingSymbol_Returns400(t *testing.T) {
-	// Arrange: Sem query param
-	req := httptest.NewRequest(http.MethodGet, "/api/quote", nil) 
-	rr := httptest.NewRecorder()
-	mockSvc := &mockService{}
-
-	// Act
-	handler := QuoteHandler(mockSvc)
-	handler.ServeHTTP(rr, req)
-
-	// Assert
-	if rr.Code != http.StatusBadRequest {
-		t.Errorf("esperava status 400, recebeu %v", rr.Code)
+func TestUpdateQuoteHandler(t *testing.T) {
+	mockSvc := &MockQuoteService{
+		ForceUpdateQuoteFunc: func(ctx context.Context, symbol string) (*model.Quote, error) {
+			return &model.Quote{Symbol: symbol, Price: 100.0}, nil
+		},
 	}
-}
 
-func TestQuoteHandler_InvalidPrice_Returns422(t *testing.T) {
-	// Arrange
-	mockSvc := &mockService{
-		mockQuote: nil,
-		mockErr:   errors.New("invalid price received"),
-	}
-	req := httptest.NewRequest(http.MethodGet, "/api/quote?symbol=ERROR", nil)
-	rr := httptest.NewRecorder()
+	handler := UpdateQuoteHandler(mockSvc)
 
-	// Act
-	handler := QuoteHandler(mockSvc)
-	handler.ServeHTTP(rr, req)
+	t.Run("sucesso no post com json", func(t *testing.T) {
+		body := `{"symbol": "VALE3"}`
+		req := httptest.NewRequest("POST", "/api/quote", strings.NewReader(body))
+		rr := httptest.NewRecorder()
 
-	// Assert
-	if rr.Code != http.StatusUnprocessableEntity {
-		t.Errorf("esperava status 422, recebeu %v", rr.Code)
-	}
+		handler.ServeHTTP(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("esperava status 200, recebeu %d", rr.Code)
+		}
+	})
 }

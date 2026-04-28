@@ -7,19 +7,30 @@ import (
 	"log"
 	"time"
 
-	"ingestion-service/internal/infrastructure"
 	"ingestion-service/internal/model"
 	"ingestion-service/internal/repository"
 )
 
-type IngestionService struct {
-	repo  repository.QuoteRepository
-	cache *infrastructure.RedisClient
-	kafka *infrastructure.KafkaProducer
+// Cache define o contrato para o armazenamento temporário.
+type Cache interface {
+	Get(ctx context.Context, key string) (string, error)
+	Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error
+	GetAllQuotes(ctx context.Context) (map[string]string, error)
 }
 
-// NewIngestionService creates a new ingestion service with cache and kafka.
-func NewIngestionService(repo repository.QuoteRepository, cache *infrastructure.RedisClient, kafka *infrastructure.KafkaProducer) *IngestionService {
+// MessageProducer define o contrato para envio de mensagens.
+type MessageProducer interface {
+	Publish(ctx context.Context, key, value []byte) error
+}
+
+type IngestionService struct {
+	repo  repository.QuoteRepository
+	cache Cache
+	kafka MessageProducer
+}
+
+// NewIngestionService cria um novo serviço de ingestão.
+func NewIngestionService(repo repository.QuoteRepository, cache Cache, kafka MessageProducer) *IngestionService {
 	return &IngestionService{
 		repo:  repo,
 		cache: cache,
@@ -64,7 +75,7 @@ func (s *IngestionService) ForceUpdateQuote(ctx context.Context, symbol string) 
 	quoteData, err := json.Marshal(quote)
 	if err == nil {
 		log.Printf("💾 Atualizando %s no Redis...", symbol)
-		s.cache.Set(ctx, symbol, quoteData, time.Minute*5) // 5 min de cache para dados atualizados
+		s.cache.Set(ctx, symbol, quoteData, time.Minute*5) 
 	}
 
 	// 4. Publicar no Kafka

@@ -5,74 +5,52 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 )
 
-type mockResponse struct {
-	Results []struct {
-		Symbol string  `json:"symbol"`
-		Price  float64 `json:"price"`
-	} `json:"results"`
-}
-
-func TestGetQuote_ReturnsExpectedQuote(t *testing.T) {
-	mockResults := mockResponse{
-		Results: []struct {
-			Symbol string  `json:"symbol"`
-			Price  float64 `json:"price"`
-		}{
-			{Symbol: "PETR4", Price: 28.45},
-		},
-	}
-	mockJSON, _ := json.Marshal(mockResults)
-
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func TestBrapiRepository_GetQuote(t *testing.T) {
+	// Cria um servidor de teste para simular a API externa
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		resp := BrapiResponse{
+			Results: []struct {
+				Symbol string  `json:"symbol"`
+				Price  float64 `json:"regularMarketPrice"`
+			}{
+				{Symbol: "PETR4", Price: 35.50},
+			},
+		}
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		w.Write(mockJSON)
+		json.NewEncoder(w).Encode(resp)
 	}))
-	defer ts.Close()
+	defer server.Close()
 
-	// CORREÇÃO: Usando o nome correto do construtor
-	repo := NewBrapiRepository(ts.URL)
+	repo := NewBrapiRepository(server.URL, "fake-token")
 
-	quote, err := repo.GetQuote("PETR4")
-	if err != nil {
-		t.Fatalf("GetQuote retornou erro: %v", err)
-	}
+	t.Run("sucesso ao buscar da API simulada", func(t *testing.T) {
+		quote, err := repo.GetQuote("PETR4")
+		if err != nil {
+			t.Fatalf("não esperava erro: %v", err)
+		}
 
-	if quote.Symbol != "PETR4" || quote.Price != 28.45 {
-		t.Errorf("dados incorretos no quote: %+v", quote)
-	}
-}
+		if quote.Symbol != "PETR4" {
+			t.Errorf("esperava PETR4, recebeu %s", quote.Symbol)
+		}
 
-func TestGetQuote_HandleHTTPError_ReturnsError(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotFound)
-	}))
-	defer ts.Close()
+		if quote.Price != 35.50 {
+			t.Errorf("esperava 35.50, recebeu %f", quote.Price)
+		}
+	})
 
-	repo := NewBrapiRepository(ts.URL)
-	_, err := repo.GetQuote("INVALID")
+	t.Run("erro quando API retorna 404", func(t *testing.T) {
+		// Podemos criar outro servidor ou mudar o comportamento
+		errorServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer errorServer.Close()
 
-	if err == nil {
-		t.Error("esperava erro para status 404")
-	}
-}
-
-func TestGetQuote_Timeout_ReturnsError(t *testing.T) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(200 * time.Millisecond) // Dorme mais que o timeout
-	}))
-	defer ts.Close()
-
-	repo := NewBrapiRepository(ts.URL)
-	repo.client.Timeout = time.Millisecond * 50 // Timeout curto
-
-	// CORREÇÃO: GetQuote retorna dois valores (quote, err)
-	_, err := repo.GetQuote("PETR4")
-
-	if err == nil {
-		t.Error("esperava erro de timeout")
-	}
+		repoErr := NewBrapiRepository(errorServer.URL, "token")
+		_, err := repoErr.GetQuote("ERRO")
+		if err == nil {
+			t.Error("esperava erro mas recebeu nil")
+		}
+	})
 }

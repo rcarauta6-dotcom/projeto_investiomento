@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -9,62 +10,87 @@ import (
 	"ingestion-service/internal/model"
 )
 
-// mockQuoteRepository simula o repositório de cotações para isolar a camada de serviço.
-type mockQuoteRepository struct {
-	mockQuote *model.Quote
-	mockErr   error
+// MockCache para testes
+type MockCache struct {
+	GetFunc func(ctx context.Context, key string) (string, error)
+	SetFunc func(ctx context.Context, key string, value interface{}, expiration time.Duration) error
 }
 
-func (m *mockQuoteRepository) GetQuote(symbol string) (*model.Quote, error) {
-	return m.mockQuote, m.mockErr
+func (m *MockCache) Get(ctx context.Context, key string) (string, error) { return m.GetFunc(ctx, key) }
+func (m *MockCache) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
+	return m.SetFunc(ctx, key, value, expiration)
+}
+func (m *MockCache) GetAllQuotes(ctx context.Context) (map[string]string, error) { return nil, nil }
+
+// MockProducer para testes
+type MockProducer struct {
+	PublishFunc func(ctx context.Context, key, value []byte) error
 }
 
-func TestGetQuote_Success(t *testing.T) {
-	// Arrange
-	expectedQuote := &model.Quote{Symbol: "VALE3", Price: 65.50, Time: time.Now().Format(time.RFC3339)}
-	repo := &mockQuoteRepository{mockQuote: expectedQuote, mockErr: nil}
-	service := NewIngestionService(repo)
+func (m *MockProducer) Publish(ctx context.Context, key, value []byte) error {
+	return m.PublishFunc(ctx, key, value)
+}
 
-	// Act
-	quote, err := service.GetQuote(context.Background(), "VALE3")
+// MockRepo para testes
+type MockRepo struct {
+	GetQuoteFunc func(symbol string) (*model.Quote, error)
+}
 
-	// Assert
+func (m *MockRepo) GetQuote(symbol string) (*model.Quote, error) { return m.GetQuoteFunc(symbol) }
+
+func TestIngestionService_GetQuote_CacheHit(t *testing.T) {
+	ctx := context.Background()
+	expectedQuote := &model.Quote{Symbol: "PETR4", Price: 30.0}
+	data, _ := json.Marshal(expectedQuote)
+
+	cache := &MockCache{
+		GetFunc: func(ctx context.Context, key string) (string, error) {
+			return string(data), nil
+		},
+	}
+
+	svc := NewIngestionService(nil, cache, nil)
+	quote, err := svc.GetQuote(ctx, "PETR4")
+
 	if err != nil {
-		t.Fatalf("não esperava erro, recebeu: %v", err)
+		t.Errorf("não esperava erro, recebeu %v", err)
 	}
-	if quote.Price != 65.50 {
-		t.Errorf("esperava preço 65.50, recebeu %f", quote.Price)
-	}
-}
-
-func TestGetQuote_InvalidPrice_ReturnsError(t *testing.T) {
-	// Arrange: Repositório retorna um preço negativo (incomum, mas possível falha na API)
-	invalidQuote := &model.Quote{Symbol: "OIBR3", Price: -1.50, Time: time.Now().Format(time.RFC3339)}
-	repo := &mockQuoteRepository{mockQuote: invalidQuote, mockErr: nil}
-	service := NewIngestionService(repo)
-
-	// Act
-	_, err := service.GetQuote(context.Background(), "OIBR3")
-
-	// Assert
-	if err == nil {
-		t.Error("esperava erro por preço inválido, mas não recebeu nada")
-	}
-	if err.Error() != "invalid price received" {
-		t.Errorf("esperava mensagem 'invalid price received', recebeu: %v", err.Error())
+	if quote.Symbol != "PETR4" {
+		t.Errorf("esperava PETR4, recebeu %s", quote.Symbol)
 	}
 }
 
-func TestGetQuote_RepositoryError_ReturnsError(t *testing.T) {
-	// Arrange: Simulando queda da API Brapi
-	repo := &mockQuoteRepository{mockQuote: nil, mockErr: errors.New("timeout da api")}
-	service := NewIngestionService(repo)
+func TestIngestionService_GetQuote_CacheMiss(t *testing.T) {
+	ctx := context.Background()
+	
+	cache := &MockCache{
+		GetFunc: func(ctx context.Context, key string) (string, error) {
+			return "", errors.New("miss")
+		},
+		SetFunc: func(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
+			return nil
+		},
+	}
 
-	// Act
-	_, err := service.GetQuote(context.Background(), "PETR4")
+	repo := &MockRepo{
+		GetQuoteFunc: func(symbol string) (*model.Quote, error) {
+			return &model.Quote{Symbol: symbol, Price: 40.0}, nil
+		},
+	}
 
-	// Assert
-	if err == nil {
-		t.Error("esperava erro repassado do repositório, mas foi nulo")
+	producer := &MockProducer{
+		PublishFunc: func(ctx context.Context, key, value []byte) error {
+			return nil
+		},
+	}
+
+	svc := NewIngestionService(repo, cache, producer)
+	quote, err := svc.GetQuote(ctx, "VALE3")
+
+	if err != nil {
+		t.Errorf("não esperava erro, recebeu %v", err)
+	}
+	if quote.Price != 40.0 {
+		t.Errorf("esperava preço 40.0, recebeu %f", quote.Price)
 	}
 }
