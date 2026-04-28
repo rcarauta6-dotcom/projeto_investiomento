@@ -12,29 +12,32 @@ import (
 type BrapiResponse struct {
 	Results []struct {
 		Symbol string  `json:"symbol"`
-		Price  float64 `json:"price"`
+		Price  float64 `json:"regularMarketPrice"`
 	} `json:"results"`
 }
 
 type BrapiRepository struct {
 	client  *http.Client
 	baseURL string
+	token   string
 }
 
-func NewBrapiRepository(baseURL string) *BrapiRepository {
+func NewBrapiRepository(baseURL, token string) *BrapiRepository {
 	return &BrapiRepository{
 		client:  &http.Client{Timeout: time.Second * 10},
 		baseURL: baseURL,
+		token:   token,
 	}
 }
 
 func (r *BrapiRepository) GetQuote(symbol string) (*model.Quote, error) {
-	endpoint := fmt.Sprintf("%s/quote/%s", r.baseURL, url.PathEscape(symbol))
+	endpoint := fmt.Sprintf("%s/quote/%s?token=%s", r.baseURL, url.PathEscape(symbol), r.token)
 	resp, err := r.client.Get(endpoint)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
+// ...
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("erro api: %d", resp.StatusCode)

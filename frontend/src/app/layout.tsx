@@ -12,8 +12,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className="h-full bg-slate-50">
-      <body className={`${geistSans.className} h-full antialiased text-slate-900`}>
+    <html lang="pt-BR" className="h-full bg-slate-50" suppressHydrationWarning>
+      <body className={`${geistSans.className} h-full antialiased text-slate-900`} suppressHydrationWarning>
         <div className="flex min-h-screen bg-slate-50">
           
           {/* Sidebar Fixa - Visual Profissional */}
@@ -29,8 +29,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
             <nav className="flex-1 px-4 py-4 space-y-1">
               <SidebarLink href="/" label="Dashboard" icon={<IconDashboard />} />
-              <SidebarLink href="/portfolio" label="Portfólio" icon={<IconPortfolio />} active />
-              <SidebarLink href="/market" label="Mercado" icon={<IconMarket />} />
+              <SidebarLink href="/portfolio/portfolio-summary" label="Portfólio" icon={<IconPortfolio />} />
+              <SidebarLink href="/market/cached" label="Mercado" icon={<IconMarket />} />
               <SidebarLink href="/ai" label="IA Insights" icon={<IconAI />} />
             </nav>
 

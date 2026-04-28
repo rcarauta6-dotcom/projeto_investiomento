@@ -36,6 +36,11 @@ spring:
           predicates:
             - Path=/api/core/**, /api/v1/**
 
+        - id: ingestion-service
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/ingestion/**, /api/quote/**, /api/quotes/**
+
 logging:
   level:
     org.springframework.cloud.gateway: DEBUG

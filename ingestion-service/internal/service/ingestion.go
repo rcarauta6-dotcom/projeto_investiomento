@@ -2,35 +2,94 @@ package service
 
 import (
 	"context"
-	"time"
+	"encoding/json"
 	"errors"
+	"log"
+	"time"
+
+	"ingestion-service/internal/infrastructure"
 	"ingestion-service/internal/model"
 	"ingestion-service/internal/repository"
 )
 
 type IngestionService struct {
-	repo repository.QuoteRepository
+	repo  repository.QuoteRepository
+	cache *infrastructure.RedisClient
+	kafka *infrastructure.KafkaProducer
 }
 
-// NewIngestionService creates a new ingestion service.
-func NewIngestionService(repo repository.QuoteRepository) *IngestionService {
-	return &IngestionService{repo: repo}
+// NewIngestionService creates a new ingestion service with cache and kafka.
+func NewIngestionService(repo repository.QuoteRepository, cache *infrastructure.RedisClient, kafka *infrastructure.KafkaProducer) *IngestionService {
+	return &IngestionService{
+		repo:  repo,
+		cache: cache,
+		kafka: kafka,
+	}
 }
 
-// GetQuote fetches a quote for the given symbol with a timeout.
+// GetQuote fetches a quote, caches it, and publishes to Kafka.
 func (s *IngestionService) GetQuote(ctx context.Context, symbol string) (*model.Quote, error) {
-	// Context with timeout of 5 seconds to prevent hanging.
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	// 1. Tentar buscar do Cache (Redis)
+	cachedQuote, err := s.cache.Get(ctx, symbol)
+	if err == nil {
+		log.Printf("🔹 Cache hit para %s", symbol)
+		var quote model.Quote
+		if err := json.Unmarshal([]byte(cachedQuote), &quote); err == nil {
+			return &quote, nil
+		}
+		log.Printf("⚠️ Erro ao desentalar cache para %s: %v", symbol, err)
+	}
 
-	// Delegate the repository call; business logic could be added here.
+	return s.ForceUpdateQuote(ctx, symbol)
+}
+
+// ForceUpdateQuote fetches fresh data from external API, bypassing cache.
+func (s *IngestionService) ForceUpdateQuote(ctx context.Context, symbol string) (*model.Quote, error) {
+	// 2. Buscar da API Externa (Brapi/Outra)
+	log.Printf("📡 Buscando %s na API externa (FORÇADO)...", symbol)
 	quote, err := s.repo.GetQuote(symbol)
+	if err != nil {
+		log.Printf("❌ Erro ao buscar %s no repositório: %v", symbol, err)
+		return nil, err
+	}
+
+	if quote.Price <= 0 {
+		log.Printf("⚠️ Preço inválido para %s: %f", symbol, quote.Price)
+		return nil, errors.New("preço inválido recebido")
+	}
+
+	log.Printf("✅ %s obtido com sucesso: R$ %.2f", symbol, quote.Price)
+
+	// 3. Salvar no Cache
+	quoteData, err := json.Marshal(quote)
+	if err == nil {
+		log.Printf("💾 Atualizando %s no Redis...", symbol)
+		s.cache.Set(ctx, symbol, quoteData, time.Minute*5) // 5 min de cache para dados atualizados
+	}
+
+	// 4. Publicar no Kafka
+	log.Printf("📤 Publicando %s no Kafka...", symbol)
+	err = s.kafka.Publish(ctx, []byte(symbol), quoteData)
+	if err != nil {
+		log.Printf("❌ Erro ao publicar no Kafka: %v", err)
+	}
+
+	return quote, nil
+}
+
+// GetAllQuotes returns all quotes stored in Redis.
+func (s *IngestionService) GetAllQuotes(ctx context.Context) ([]*model.Quote, error) {
+	data, err := s.cache.GetAllQuotes(ctx)
 	if err != nil {
 		return nil, err
 	}
-	// Additional validation could be added before returning.
-	if quote.Price <= 0 {
-		return nil, errors.New("invalid price received")
+
+	var quotes []*model.Quote
+	for _, val := range data {
+		var q model.Quote
+		if err := json.Unmarshal([]byte(val), &q); err == nil {
+			quotes = append(quotes, &q)
+		}
 	}
-	return quote, nil
+	return quotes, nil
 }
