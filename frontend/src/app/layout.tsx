@@ -1,16 +1,16 @@
+'use client';
+
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const geistSans = Geist({ subsets: ["latin"] });
 
-export const metadata: Metadata = {
-  title: "BolsaDash | Gestão de Investimentos",
-  description: "Acompanhe seu patrimônio em tempo real",
-};
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
   return (
     <html lang="pt-BR" className="h-full bg-slate-50" suppressHydrationWarning>
       <body className={`${geistSans.className} h-full antialiased text-slate-900`} suppressHydrationWarning>
@@ -28,10 +28,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
 
             <nav className="flex-1 px-4 py-4 space-y-1">
-              <SidebarLink href="/" label="Dashboard" icon={<IconDashboard />} />
-              <SidebarLink href="/portfolio/portfolio-summary" label="Portfólio" icon={<IconPortfolio />} />
-              <SidebarLink href="/market/cached" label="Mercado" icon={<IconMarket />} />
-              <SidebarLink href="/ai" label="IA Insights" icon={<IconAI />} />
+              <SidebarLink href="/" label="Dashboard" icon={<IconDashboard />} active={pathname === "/"} />
+              <SidebarLink href="/portfolio/portfolio-summary" label="Portfólio" icon={<IconPortfolio />} active={pathname.startsWith("/portfolio")} />
+              <SidebarLink href="/market/cached" label="Mercado" icon={<IconMarket />} active={pathname.startsWith("/market")} />
+              <SidebarLink href="/ai" label="IA Insights" icon={<IconAI />} active={pathname.startsWith("/ai")} />
             </nav>
 
             <div className="p-4 border-t border-slate-800">

@@ -1,0 +1,124 @@
+name: CI/CD - Frontend
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'frontend/**'
+  pull_request:
+    branches:
+      - main
+      - master
+    paths:
+      - 'frontend/**'
+
+env:
+  IMAGE_NAME: frontend
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build application
+        run: npm run build
+
+  build-and-push:
+    name: Build and Push Docker Image
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: frontend
+          push: false
+          tags: ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          load: true
+
+      - name: Save Docker image
+        run: docker save ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} > frontend.tar
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: frontend.tar
+          retention-days: 1
+
+  deploy-local:
+    name: Deploy to Local Kubernetes
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+
+      - name: Load Docker image
+        run: |
+          docker load < frontend.tar
+          rm frontend.tar
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      - name: Configure kubectl for Kind/K3d
+        run: |
+          # Assuming local cluster is already running
+          # This step would need to be customized based on your local setup
+          kubectl cluster-info || echo "No local cluster found - skipping deploy"
+
+      - name: Deploy to Kubernetes
+        run: |
+          # Load image into Kind cluster if using Kind
+          # kind load docker-image frontend:${{ github.sha }}
+          
+          # Apply Kubernetes manifests
+          kubectl apply -f frontend/k8s/deployment.yaml
+          
+          # Wait for deployment to be ready
+          kubectl rollout status deployment/frontend --timeout=300s
+        env:
+          KUBECONFIG: ${{ secrets.KUBECONFIG }}

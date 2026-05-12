@@ -39,7 +39,14 @@ spring:
         - id: ingestion-service
           uri: http://localhost:8082
           predicates:
-            - Path=/api/ingestion/**, /api/quote/**, /api/quotes/**
+            - Path=/api/ingestion/**, /api/quote/**, /api/quotes/**, /api/v1/market/**
+
+        - id: ai-service
+          uri: http://localhost:8084
+          predicates:
+            - Path=/api/v1/ai/**
+          filters:
+            - RewritePath=/api/v1/ai/(?<segment>.*), /api/ai/${segment}
 
 logging:
   level:

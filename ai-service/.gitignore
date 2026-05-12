@@ -31,3 +31,4 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+ai-service/.env

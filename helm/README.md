@@ -75,3 +75,6 @@ octant
 - ConfigMaps e Secrets
 
 5. Use a busca dentro do Octant para encontrar `pg-db` ou `postgresql` rapidamente.
+
+6. Rodar o port foward para o kafka 
+    - kubectl port-forward service/kafka-dev-kafka 9092:9092 -n meu-kafka-ns

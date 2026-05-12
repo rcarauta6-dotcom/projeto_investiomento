@@ -9,7 +9,8 @@ cd ai-service
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python src/app.py
+PYTHONPATH=. .venv/bin/python src/app.py
+
 ```
 
 ## Endpoints iniciais
@@ -21,7 +22,7 @@ python src/app.py
 Exemplo de request:
 
 ```bash
-curl -X POST http://localhost:8083/api/ai/recommend \
+curl -X POST http://localhost:8084/api/ai/recommend \
   -H 'Content-Type: application/json' \
   -d '{"query":"ações"}'
 ```
