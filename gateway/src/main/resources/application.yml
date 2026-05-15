@@ -10,7 +10,7 @@ spring:
       globalcors:
         cors-configurations:
           '[/**]':
-            allowedOrigins: "http://localhost:3000"
+            allowedOriginPatterns: "*"
             allowedMethods:
               - GET
               - POST
@@ -25,24 +25,24 @@ spring:
 
       routes:
         - id: core-service-external
-          uri: http://localhost:8081
+          uri: ${CORE_SERVICE_URL:http://localhost:8081}
           predicates:
             - Path=/gateway/v1/**
           filters:
             - RewritePath=/gateway/v1/(?<segment>.*), /api/v1/${segment}
         
         - id: core-service-internal
-          uri: http://localhost:8081
+          uri: ${CORE_SERVICE_URL:http://localhost:8081}
           predicates:
             - Path=/api/core/**, /api/v1/**
 
         - id: ingestion-service
-          uri: http://localhost:8082
+          uri: ${INGESTION_SERVICE_URL:http://localhost:8082}
           predicates:
             - Path=/api/ingestion/**, /api/quote/**, /api/quotes/**, /api/v1/market/**
 
         - id: ai-service
-          uri: http://localhost:8084
+          uri: ${AI_SERVICE_URL:http://localhost:8084}
           predicates:
             - Path=/api/v1/ai/**
           filters:

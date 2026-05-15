@@ -29,7 +29,7 @@ export default function MarketChart({ symbol }: MarketChartProps) {
     async function fetchHistory() {
       try {
         setLoading(true);
-        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+        const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
         const response = await fetch(`${baseUrl}/api/v1/market/history?symbol=${symbol}&range=5d&interval=1h`, {
           headers: {
             'X-Custom-Host': 'meu-app-autorizado',

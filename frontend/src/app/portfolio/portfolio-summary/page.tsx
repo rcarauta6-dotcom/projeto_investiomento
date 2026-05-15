@@ -12,7 +12,7 @@ export default function PortfolioSummary() {
   const [analyzing, setAiAnalyzing] = useState(false);
 
   const fetchSummary = async () => {
-    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+    const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
     try {
       setLoading(true);
       const response = await fetch(`${baseUrl}/api/v1/portfolio/summary`, {

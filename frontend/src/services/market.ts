@@ -29,7 +29,7 @@ export async function getStockPrice(ticker: string) {
 }
 
 export async function getCachedQuotes(): Promise<Quote[]> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   const response = await fetch(`${baseUrl}/api/quotes/cached`, {
     method: 'GET',
     cache: 'no-store',
@@ -49,7 +49,7 @@ export async function getCachedQuotes(): Promise<Quote[]> {
 }
 
 export async function requestQuoteUpdate(symbol: string): Promise<Quote> {
-  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   const cleanSymbol = symbol.toUpperCase().trim();
   
   // Enviando via POST mas com query param symbol para garantir compatibilidade

@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  ingestion-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8082"
+    environment:
+      - REDIS_ADDR=redis-db-master:6379
+      - REDIS_PASSWORD=change-me
+      - KAFKA_BROKERS=kafka-dev-kafka:9092
+      - BRAPI_TOKEN=change-me
+      - CORE_SERVICE_URL=http://core-service:8081
+      - AI_SERVICE_URL=http://ai-service:8084
+    networks:
+      - investment-network
+
+networks:
+  investment-network:
+    driver: bridge

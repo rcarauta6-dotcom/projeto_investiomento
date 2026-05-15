@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  core-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    environment:
+      - SERVER_PORT=8081
+    networks:
+      - investment-network
+
+networks:
+  investment-network:
+    driver: bridge

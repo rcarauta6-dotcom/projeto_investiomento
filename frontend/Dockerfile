@@ -15,6 +15,8 @@ COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+# Garantir que a URL base seja relativa durante o build para o proxy funcionar
+ENV NEXT_PUBLIC_API_BASE_URL=""
 
 RUN npm run build
 

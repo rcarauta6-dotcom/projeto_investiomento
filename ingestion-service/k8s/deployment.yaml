@@ -1,0 +1,81 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ingestion-ns
+  labels:
+    name: ingestion-ns
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ingestion-service
+  namespace: ingestion-ns
+  labels:
+    app: ingestion-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ingestion-service
+  template:
+    metadata:
+      labels:
+        app: ingestion-service
+    spec:
+      containers:
+      - name: ingestion-service
+        image: ingestion-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8082
+        env:
+        - name: SERVER_PORT
+          value: ":8082"
+        - name: REDIS_ADDR
+          value: "redis-db-master.redis:6379"
+        - name: REDIS_PASSWORD
+          value: "mypassword"
+        - name: KAFKA_BROKERS
+          value: "kafka-dev-kafka.meu-kafka-ns:9092"
+        - name: BRAPI_TOKEN
+          value: "PLACEHOLDER_TOKEN"
+        - name: CORE_SERVICE_URL
+          value: "http://core-service.core-ns:8081"
+        - name: AI_SERVICE_URL
+          value: "http://ai-service.ai-service-ns:8084"
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8082
+          initialDelaySeconds: 10
+          periodSeconds: 15
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8082
+          initialDelaySeconds: 5
+          periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingestion-service
+  namespace: ingestion-ns
+  labels:
+    app: ingestion-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8082
+    targetPort: 8082
+    protocol: TCP
+    name: http
+  selector:
+    app: ingestion-service
