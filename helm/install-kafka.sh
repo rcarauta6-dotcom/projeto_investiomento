@@ -114,7 +114,7 @@ spec:
             - name: KAFKA_LISTENERS
               value: "PLAINTEXT://0.0.0.0:{{ .Values.kafka.port }}"
             - name: KAFKA_ADVERTISED_LISTENERS
-              value: "PLAINTEXT://{{ .Release.Name }}-kafka:{{ .Values.kafka.port }}"
+              value: "PLAINTEXT://{{ .Release.Name }}-kafka.meu-kafka-ns.svc.cluster.local:{{ .Values.kafka.port }}"
             - name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR
               value: "1"
 EOF

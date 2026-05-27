@@ -34,34 +34,40 @@ spec:
         - name: REDIS_ADDR
           value: "redis-db-master.redis:6379"
         - name: REDIS_PASSWORD
-          value: "mypassword"
+          valueFrom:
+            secretKeyRef:
+              name: api-secrets
+              key: redis-password
         - name: KAFKA_BROKERS
-          value: "kafka-dev-kafka.meu-kafka-ns:9092"
+          value: "kafka-dev-kafka.meu-kafka-ns.svc.cluster.local:9092"
         - name: BRAPI_TOKEN
-          value: "PLACEHOLDER_TOKEN"
+          valueFrom:
+            secretKeyRef:
+              name: api-secrets
+              key: brapi-token
         - name: CORE_SERVICE_URL
-          value: "http://core-service.core-ns:8081"
+          value: "http://core-service.core-ns.svc.cluster.local:8081"
         - name: AI_SERVICE_URL
-          value: "http://ai-service.ai-service-ns:8084"
+          value: "http://ai-service.ai-service-ns.svc.cluster.local:8084"
         resources:
           requests:
-            memory: "64Mi"
+            memory: "128Mi"
             cpu: "100m"
           limits:
-            memory: "128Mi"
+            memory: "256Mi"
             cpu: "500m"
         livenessProbe:
           httpGet:
             path: /health
             port: 8082
-          initialDelaySeconds: 10
-          periodSeconds: 15
+          initialDelaySeconds: 40
+          periodSeconds: 30
         readinessProbe:
           httpGet:
             path: /health
             port: 8082
-          initialDelaySeconds: 5
-          periodSeconds: 5
+          initialDelaySeconds: 20
+          periodSeconds: 15
 ---
 apiVersion: v1
 kind: Service

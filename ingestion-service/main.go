@@ -94,7 +94,7 @@ func main() {
 
 	// Notícias
 	mux.HandleFunc("/api/v1/market/news", func(w http.ResponseWriter, r *http.Request) {
-		news, err := redisClient.Get(r.Context(), "latest_market_news")
+		news, err := redisClient.Get(r.Context(), "news:latest_market_news")
 		if err != nil {
 			w.Header().Set("Content-Type", "application/json")
 			w.Write([]byte("[]"))
@@ -133,15 +133,24 @@ func main() {
 
 	// Interceptor para Análise de Portfólio
 	mux.HandleFunc("/api/v1/market/portfolio/analyze", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("💼 Iniciando análise tática do portfólio...")
+		log.Printf("💼 Ingestion Service: Iniciando análise tática do portfólio via %s", coreServiceURL)
 
 		portfolioResp, err := http.Get(coreServiceURL + "/api/v1/portfolio")
 		if err != nil {
+			log.Printf("❌ Erro ao conectar no Core Service (%s): %v", coreServiceURL, err)
 			http.Error(w, "Erro ao buscar portfólio no Core Service", http.StatusServiceUnavailable)
 			return
 		}
 		defer portfolioResp.Body.Close()
+		
+		if portfolioResp.StatusCode != http.StatusOK {
+			log.Printf("❌ Core Service retornou erro: %d", portfolioResp.StatusCode)
+			http.Error(w, "Core Service retornou erro", portfolioResp.StatusCode)
+			return
+		}
+
 		portfolioData, _ := io.ReadAll(portfolioResp.Body)
+		log.Printf("✅ Portfólio recuperado (%d bytes). Chamando AI Service...", len(portfolioData))
 
 		payload := map[string]interface{}{
 			"type":      "portfolio_analysis",
@@ -152,11 +161,13 @@ func main() {
 		aiURL := fmt.Sprintf("%s/api/ai/chat", aiServiceURL)
 		resp, err := http.Post(aiURL, "application/json", bytes.NewBuffer(jsonPayload))
 		if err != nil {
+			log.Printf("❌ Erro ao conectar no AI Service (%s): %v", aiURL, err)
 			http.Error(w, "IA indisponível", http.StatusServiceUnavailable)
 			return
 		}
 		defer resp.Body.Close()
 
+		log.Printf("✅ Resposta recebida da IA (Status: %d)", resp.StatusCode)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(resp.StatusCode)
 		io.Copy(w, resp.Body)
@@ -168,7 +179,7 @@ func main() {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		log.Println("🤖 Ingestion Service interceptando chamada para IA...")
+		log.Printf("🤖 Ingestion Service: interceptando chat para %s", aiServiceURL)
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			http.Error(w, "Error reading body", http.StatusInternalServerError)
@@ -177,10 +188,13 @@ func main() {
 		aiURL := fmt.Sprintf("%s/api/ai/chat", aiServiceURL)
 		resp, err := http.Post(aiURL, "application/json", bytes.NewBuffer(body))
 		if err != nil {
+			log.Printf("❌ Erro ao conectar no AI Service (%s): %v", aiURL, err)
 			http.Error(w, fmt.Sprintf("AI Service unreachable: %v", err), http.StatusServiceUnavailable)
 			return
 		}
 		defer resp.Body.Close()
+		
+		log.Printf("✅ Resposta do chat recebida (Status: %d)", resp.StatusCode)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(resp.StatusCode)
 		io.Copy(w, resp.Body)

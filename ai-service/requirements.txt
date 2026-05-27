@@ -9,3 +9,4 @@ confluent-kafka
 python-dotenv
 sentence-transformers
 langchain-groq
+langchain-openai

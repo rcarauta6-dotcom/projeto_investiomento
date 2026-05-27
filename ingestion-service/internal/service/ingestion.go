@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -40,15 +41,18 @@ func NewIngestionService(repo repository.QuoteRepository, cache Cache, kafka Mes
 
 // GetQuote fetches a quote, caches it, and publishes to Kafka.
 func (s *IngestionService) GetQuote(ctx context.Context, symbol string) (*model.Quote, error) {
-	// 1. Tentar buscar do Cache (Redis)
-	cachedQuote, err := s.cache.Get(ctx, symbol)
+	// 1. Tentar buscar do Cache (Redis) com prefixo
+	cacheKey := fmt.Sprintf("quote:%s", symbol)
+	cachedQuote, err := s.cache.Get(ctx, cacheKey)
 	if err == nil {
-		log.Printf("🔹 Cache hit para %s", symbol)
+		log.Printf("🔹 [CACHE HIT] %s encontrado no Redis", symbol)
 		var quote model.Quote
 		if err := json.Unmarshal([]byte(cachedQuote), &quote); err == nil {
 			return &quote, nil
 		}
-		log.Printf("⚠️ Erro ao desentalar cache para %s: %v", symbol, err)
+		log.Printf("⚠️ [CACHE ERROR] Falha ao decodificar %s: %v", symbol, err)
+	} else {
+		log.Printf("🔸 [CACHE MISS] %s não encontrado ou Redis fora: %v", symbol, err)
 	}
 
 	return s.ForceUpdateQuote(ctx, symbol)
@@ -71,11 +75,12 @@ func (s *IngestionService) ForceUpdateQuote(ctx context.Context, symbol string) 
 
 	log.Printf("✅ %s obtido com sucesso: R$ %.2f", symbol, quote.Price)
 
-	// 3. Salvar no Cache
+	// 3. Salvar no Cache com prefixo
 	quoteData, err := json.Marshal(quote)
 	if err == nil {
+		cacheKey := fmt.Sprintf("quote:%s", symbol)
 		log.Printf("💾 Atualizando %s no Redis...", symbol)
-		s.cache.Set(ctx, symbol, quoteData, time.Minute*5) 
+		s.cache.Set(ctx, cacheKey, quoteData, time.Minute*30) // Aumentado para 30 min
 	}
 
 	// 4. Publicar no Kafka
@@ -100,6 +105,8 @@ func (s *IngestionService) GetAllQuotes(ctx context.Context) ([]*model.Quote, er
 		var q model.Quote
 		if err := json.Unmarshal([]byte(val), &q); err == nil {
 			quotes = append(quotes, &q)
+		} else {
+			log.Printf("⚠️ [GET ALL ERROR] Falha ao decodificar valor do Redis: %v", err)
 		}
 	}
 	return quotes, nil

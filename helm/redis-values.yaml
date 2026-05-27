@@ -1,4 +1,6 @@
-usePassword: false
+auth:
+  enabled: true
+  password: "mypassword"
 
 cluster:
   enabled: false

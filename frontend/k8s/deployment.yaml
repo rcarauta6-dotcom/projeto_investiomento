@@ -35,7 +35,7 @@ spec:
         - name: NEXT_PUBLIC_API_BASE_URL
           value: ""
         - name: GATEWAY_URL
-          value: "http://gateway.gateway-ns:8080"
+          value: "http://gateway.gateway-ns.svc.cluster.local:8080"
         resources:
           requests:
             memory: "128Mi"

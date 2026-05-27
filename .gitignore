@@ -1,0 +1,7 @@
+.env
+.env.*
+k8s-api-secrets.yaml
+ai-service/.env
+ai-service/.env.*
+**/ .env
+**/ .env.*

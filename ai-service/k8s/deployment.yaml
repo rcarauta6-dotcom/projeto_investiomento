@@ -42,9 +42,20 @@ spec:
         - containerPort: 8084
         env:
         - name: GROQ_API_KEY
-          value: "PLACEHOLDER_GROQ_KEY"
+          valueFrom:
+            secretKeyRef:
+              name: api-secrets
+              key: groq-api-key
         - name: KAFKA_BROKERS
-          value: "kafka-dev-kafka.meu-kafka-ns:9092"
+          value: "kafka-dev-kafka.meu-kafka-ns.svc.cluster.local:9092"
+        - name: LLM_MODEL
+          value: "llama-3.3-70b-versatile"
+        - name: EMBEDDING_MODEL_NAME
+          value: "sentence-transformers/all-MiniLM-L6-v2"
+        - name: CHROMA_PATH
+          value: "/app/data/chroma"
+        - name: HF_HOME
+          value: "/app/data/huggingface"
         resources:
           requests:
             memory: "512Mi"
@@ -59,13 +70,13 @@ spec:
           httpGet:
             path: /health
             port: 8084
-          initialDelaySeconds: 60
+          initialDelaySeconds: 120
           periodSeconds: 30
         readinessProbe:
           httpGet:
             path: /health
             port: 8084
-          initialDelaySeconds: 30
+          initialDelaySeconds: 60
           periodSeconds: 15
       volumes:
       - name: ai-data
