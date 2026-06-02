@@ -32,17 +32,20 @@ func NewBrapiRepository(baseURL, token string) *BrapiRepository {
 }
 
 func (r *BrapiRepository) GetQuote(symbol string) (*model.Quote, error) {
-	endpoint := fmt.Sprintf("%s/quote/%s?token=%s", r.baseURL, url.PathEscape(symbol), r.token)
+	endpoint := fmt.Sprintf("%s/quote/%s", r.baseURL, url.PathEscape(symbol))
 	
 	req, err := http.NewRequest("GET", endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("erro ao criar request: %v", err)
 	}
 
+	// Add Authorization header
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", r.token))
+
 	// Add User-Agent to avoid being blocked by Cloudflare/WAF
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
 
-	log.Printf("📡 Chamando BrAPI para símbolo %s...", symbol)
+	log.Printf("📡 Chamando BrAPI para símbolo %s via Header...", symbol)
 	
 	resp, err := r.client.Do(req)
 	if err != nil {
